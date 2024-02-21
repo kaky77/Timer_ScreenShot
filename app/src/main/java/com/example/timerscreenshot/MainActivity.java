@@ -14,10 +14,12 @@ import androidx.core.content.ContextCompat;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.ContentResolver;
+import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -100,11 +102,60 @@ public class MainActivity extends AppCompatActivity {
         };
         handler.post(runnableCode);*/
 
-        //String folderpath = Environment.DIRECTORY_PICTURES+ File.separator+"BackupImage_2024-02-15";
-       // File picturesDirectory = new File("/storage/emulated/0/Pictures/BackupImage_2024-02-15");
+        //String folderpath = Environment.DIRECTORY_PICTURES+ File.separator+"BackupImage_2024-02-20";
+       // File picturesDirectory = new File("/storage/emulated/0/Pictures/BackupImage_2024-02-20");
 
+        //deleteImagesInFolder(contentResolver,"/storage/emulated/0/Pictures/BackupImage_2024-02-20");
+
+        boolean deleted = deleteEmptyDirectory("/storage/emulated/0/Pictures/BackupImage_2024-02-20");
+        if (deleted) {
+            // Le répertoire vide a été supprimé avec succès
+            Log.d(TAG,"Le répertoire vide a été supprimé avec succès");
+        } else {
+            // Le répertoire n'est pas vide ou n'existe pas
+            Log.d(TAG,"Le répertoire n'est pas vide ou n'existe pas");
+        }
 
     }
+
+
+    public static void deleteImagesInFolder(ContentResolver contentResolver, String folderPath) {
+        // 1. Récupérer l'URI du dossier
+        Uri uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+
+        // 2. Sélectionner toutes les images dans ce dossier
+        String[] projection = { MediaStore.Images.Media._ID };
+        String selection = MediaStore.Images.Media.DATA + " like ?";
+        String[] selectionArgs = { folderPath + "%" };
+
+
+        Cursor cursor = contentResolver.query(uri, projection, selection, selectionArgs, null);
+
+        if (cursor != null) {
+            while (cursor.moveToNext()) {
+                // 3. Supprimer chaque image
+                @SuppressLint("Range") long id = cursor.getLong(cursor.getColumnIndex(MediaStore.Images.Media._ID));
+                Uri contentUri = ContentUris.withAppendedId(uri, id);
+                contentResolver.delete(contentUri, null, null);
+            }
+            cursor.close();
+        }
+
+        // 4. Supprimer le dossier lui-même
+        contentResolver.delete(uri, MediaStore.Images.Media.DATA + "=?", new String[]{folderPath});
+    }
+
+    public static boolean deleteEmptyDirectory(String directoryPath) {
+        File directory = new File(directoryPath);
+
+        // Vérifie si le répertoire existe et est vide
+        if (directory.exists() && directory.isDirectory() && directory.list().length == 0) {
+            return directory.delete();
+        } else {
+            return false; // Le répertoire n'est pas vide ou n'existe pas
+        }
+    }
+
 
     public  void Timer(){
         textView = findViewById(R.id.textView);
